@@ -28,6 +28,7 @@ class WorkspaceControllerTest {
  @Autowired CompanyRepository companies;
  @Autowired ApplicationRepository applications;
  @Autowired SkillMatchingService matching;
+ @Autowired CandidateProfileRepository profiles;
  @Autowired org.springframework.security.crypto.password.PasswordEncoder passwords;
  User candidate;
  Job job;
@@ -85,6 +86,24 @@ class WorkspaceControllerTest {
    .with(httpBasic("other@test.test","password123"))).andExpect(status().isForbidden());
   mvc.perform(get("/api/workspace/match/"+job.getId()).param("candidateId",candidate.getId().toString())
    .with(httpBasic("recruiter@test.test","password123"))).andExpect(status().isOk()).andExpect(jsonPath("$.missingSkills.length()").value(3));
+ }
+ @Test void feedbackIsPrivateAndValidated() throws Exception {
+  String url="/api/workspace/applications/"+application.getId()+"/feedback";
+  mvc.perform(post(url).with(httpBasic("recruiter@test.test","password123")).contentType(MediaType.APPLICATION_JSON)
+   .content("{\"rating\":4,\"recommendation\":\"RECOMMEND\",\"notes\":\"Private discussion\"}")).andExpect(status().isOk());
+  mvc.perform(get(url).with(httpBasic("user@local.test","user123"))).andExpect(status().isForbidden());
+  mvc.perform(get(url).with(httpBasic("other@test.test","password123"))).andExpect(status().isForbidden());
+  mvc.perform(get(url).with(httpBasic("recruiter@test.test","password123"))).andExpect(status().isOk()).andExpect(jsonPath("$[0].notes").value("Private discussion"));
+  mvc.perform(get(url).with(httpBasic("admin@local.test","admin123"))).andExpect(status().isOk());
+  for(String invalid : new String[]{"{\"recommendation\":\"HOLD\"}","{\"rating\":0,\"recommendation\":\"HOLD\"}","{\"rating\":6,\"recommendation\":\"HOLD\"}","{\"rating\":3,\"recommendation\":\"UNKNOWN\"}"}) {
+   mvc.perform(post(url).with(httpBasic("recruiter@test.test","password123")).contentType(MediaType.APPLICATION_JSON).content(invalid)).andExpect(status().isBadRequest());
+  }
+ }
+ @Test void replacingUnreadableCvClearsOldExtractedSkills() throws Exception {
+  var profile=new CandidateProfile(); profile.setId(candidate.getId()); profile.setSkills("React"); profile.setExtractedSkills("java"); profiles.save(profile);
+  mvc.perform(multipart("/api/workspace/profile/cv").file(new MockMultipartFile("file","new.pdf","application/pdf","%PDF-broken".getBytes()))
+   .with(httpBasic("user@local.test","user123"))).andExpect(status().isOk())
+   .andExpect(jsonPath("$.extractedSkills").value("")).andExpect(jsonPath("$.skills").value("React"));
  }
  @Test void owningRecruiterCanScheduleButOtherCompanyCannot() throws Exception {
   String body=json.writeValueAsString(Map.of("interviewAt",java.time.Instant.now().plusSeconds(86400).toString(),"durationMinutes",30,"location","Room 1"));

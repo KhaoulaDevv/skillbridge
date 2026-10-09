@@ -44,7 +44,7 @@ public class WorkspaceController {
         @Size(max=255) String location,@Size(max=255) String employmentType,JobStatus status) {}
     public record StageInput(@NotNull ApplicationStatus stage) {}
     public record MessageInput(@NotBlank @Size(max=4000) String body) {}
-    public record FeedbackInput(@Min(1) @Max(5) Integer rating,@NotBlank String recommendation,
+    public record FeedbackInput(@NotNull @Min(1) @Max(5) Integer rating,@NotBlank @Pattern(regexp="RECOMMEND|HOLD|DO_NOT_RECOMMEND") String recommendation,
         @Size(max=2000) String strengths,@Size(max=2000) String concerns,@Size(max=4000) String notes) {}
 
     @GetMapping("/me")
@@ -76,6 +76,7 @@ public class WorkspaceController {
         byte[] bytes=file.getBytes();
         if(bytes.length<5 || !new String(bytes,0,5,java.nio.charset.StandardCharsets.US_ASCII).equals("%PDF-")) throw bad("Only PDF documents are supported");
         var p=profileFor(user.getId()); p.setCvData(bytes);
+        p.setExtractedSkills("");
         try (var pdf=Loader.loadPDF(bytes)) {
             String text=new PDFTextStripper().getText(pdf);
             String lower=text.toLowerCase(Locale.ROOT);
@@ -89,7 +90,11 @@ public class WorkspaceController {
     private static final Set<String> CV_SKILLS = Set.of("java","spring boot","react","javascript","typescript","node.js","python","php","laravel","angular","sql","mysql","postgresql","docker","kubernetes","aws","azure","git","html","css");
 
     @GetMapping("/applications/{id}/feedback")
-    public List<InterviewFeedback> feedback(Principal principal,@PathVariable Long id) { access.application(me(principal),id); return feedback.findByApplicationIdOrderByCreatedAtDescIdDesc(id); }
+    public List<InterviewFeedback> feedback(Principal principal,@PathVariable Long id) {
+        var user=me(principal); var application=access.application(user,id);
+        if(!access.manages(user,application.getJob())) WorkspaceAccess.deny();
+        return feedback.findByApplicationIdOrderByCreatedAtDescIdDesc(id);
+    }
     @PostMapping("/applications/{id}/feedback")
     public InterviewFeedback addFeedback(Principal principal,@PathVariable Long id,@Valid @RequestBody FeedbackInput input) {
         var u=me(principal); var a=access.application(u,id); if(!access.manages(u,a.getJob())) WorkspaceAccess.deny();

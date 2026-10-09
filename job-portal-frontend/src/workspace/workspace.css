@@ -990,7 +990,7 @@
   position: relative;
 }
 .page-shell::before {
-  content: "GradLink.";
+  content: "SkillBridge.";
   position: absolute;
   top: 28px;
   left: 38px;

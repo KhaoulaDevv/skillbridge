@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { request, failureMessage, dateLabel, stages, label } from "./api";
 import { Match, Notice, Empty, ProfilePreview } from "./shared";
 import ApplicationContact from "../components/ApplicationContact";
@@ -222,17 +222,23 @@ export default function Applications({
     [dragError, setDragError] = useState("");
   const staff = me.role !== "ROLE_APPLICANT";
   const chosen = applications.find((a) => a.id === selected);
+  const moving = useRef(false);
+  const [moveBusy, setMoveBusy] = useState(false);
   const shown = applications.filter((a) =>
     `${a.user?.name} ${a.job?.title} ${a.job?.company}`
       .toLowerCase()
       .includes(filter.toLowerCase()),
   );
   const dropApplication = async (stage) => {
+    if (moving.current) return;
     if (!dragged || dragged.status === stage) { setDragged(null); return; }
     const application = applications.find((a) => a.id === dragged.id);
     setDragged(null); setDragError("");
+    if (!application) return;
+    moving.current = true; setMoveBusy(true);
     try { onUpdated(await request(`/applications/${application.id}/stage`, "put", {stage})); }
     catch (error) { setDragError(failureMessage(error)); }
+    finally { moving.current = false; setMoveBusy(false); }
   };
   return (
     <>
@@ -267,6 +273,7 @@ export default function Applications({
       </label>
       {staff && !messagesOnly && <p className="gl-hint gl-board-hint">Drag a candidate card into another stage to update the pipeline. Use the application detail panel for the accessible stage selector.</p>}
       {dragError && <p className="gl-alert error" role="alert">{dragError}</p>}
+      {moveBusy && <p role="status">Updating recruitment stage…</p>}
       {!applications.length ? (
         <Empty title="No applications yet">
           {staff
@@ -289,8 +296,12 @@ export default function Applications({
                       .filter((a) => a.status === s)
                       .map((a) => (
                         <button
-                          draggable
-                          onDragStart={() => setDragged({id: a.id, status: a.status})}
+                          draggable={!moveBusy}
+                          onDragStart={(event) => {
+                            event.dataTransfer.setData('text/plain', String(a.id));
+                            event.dataTransfer.effectAllowed = 'move';
+                            setDragged({id: a.id, status: a.status});
+                          }}
                           onDragEnd={() => setDragged(null)}
                           className={`gl-application ${selected === a.id ? "selected" : ""}`}
                           onClick={() => setSelected(a.id)}

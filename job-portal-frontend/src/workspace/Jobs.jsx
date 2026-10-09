@@ -232,7 +232,7 @@ export default function Jobs({ me, jobs, companies, applications, reload }) {
       ) : (
         <div className="gl-jobs">
           {shown.map((job) => {
-            const applied = applications.some((a) => a.job?.id === job.id);
+            const applied = applications.some((a) => a.job?.id === job.id && a.status !== 'WITHDRAWN');
             return (
               <article className="gl-job" key={job.id}>
                 <div className="gl-row">

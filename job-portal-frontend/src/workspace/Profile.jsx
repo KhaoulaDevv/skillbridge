@@ -39,9 +39,10 @@ export default function Profile({ me }) {
     data.append("file", file);
     setBusy(true);
     try {
-      await request("/profile/cv", "post", data);
-      const savedProfile = await request("/profile");
-      setForm((current) => ({ ...current, cvName: savedProfile.cvName }));
+      const savedProfile = await request("/profile/cv", "post", data);
+      setForm((current) => ({ ...current, cvName: savedProfile.cvName,
+        extractedSkills: savedProfile.extractedSkills,
+        extractionSummary: savedProfile.extractionSummary }));
       setNotice(
         "CV uploaded. Recruiters reviewing your applications can download it.",
       );
@@ -144,6 +145,15 @@ export default function Profile({ me }) {
             <hr />
             <h3>Your CV</h3>
             <p>A PDF, up to 5 MB. Visible to companies you apply to.</p>
+            {form.extractionSummary && <p role="status">{form.extractionSummary}</p>}
+            {form.extractedSkills && <section aria-label="Extracted CV skills">
+              <h3>Detected skills</h3><p>{form.extractedSkills}</p>
+              <p className="gl-hint">Review these suggestions, add them, then save your profile to update matching.</p>
+              <button type="button" className="gl-button secondary" disabled={busy}
+                onClick={() => setForm(current => ({...current, skills: [...new Map(`${current.skills || ''},${current.extractedSkills}`
+                  .split(/[,;\n]/).map(s => s.trim()).filter(Boolean).map(s => [s.toLowerCase(), s])).values()].join(', ')}))}>
+                Add detected skills</button>
+            </section>}
             {form.cvName && (
               <button
                 className="gl-text-button"

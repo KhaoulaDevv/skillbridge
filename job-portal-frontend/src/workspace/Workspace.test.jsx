@@ -2,6 +2,8 @@ import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "../test/test-utils";
 import { request } from "./api";
 import Profile from "./Profile";
+import Feedback from "./Feedback";
+import Jobs from "./Jobs";
 import { Match } from "./shared";
 import { Conversation, ApplicationDetail } from "./Applications";
 vi.mock("./api", async (importOriginal) => ({
@@ -10,6 +12,38 @@ vi.mock("./api", async (importOriginal) => ({
 }));
 beforeEach(() => {
   vi.resetAllMocks();
+});
+it('allows reapplying after withdrawal but blocks duplicate active applications', () => {
+  renderWithProviders(<Jobs me={{role: 'ROLE_APPLICANT'}} companies={[]} reload={vi.fn()}
+    jobs={[{id: 1, title: 'Java developer', company: 'Demo', status: 'OPEN'}, {id: 2, title: 'React developer', company: 'Demo', status: 'OPEN'}]}
+    applications={[{job: {id: 1}, status: 'WITHDRAWN'}, {job: {id: 2}, status: 'APPLIED'}]} />);
+  expect(screen.getByRole('button', {name: 'Apply now'})).toBeEnabled();
+  expect(screen.getByRole('button', {name: 'Applied ✓'})).toBeDisabled();
+});
+it('shows saved private notes to the staff feedback view', async () => {
+  request.mockResolvedValue([{id: 1, rating: 4, recommendation: 'HOLD', notes: 'Discuss the portfolio', interviewerName: 'Recruiter'}]);
+  renderWithProviders(<Feedback application={{id: 7}} />);
+  expect(await screen.findByText('Private notes: Discuss the portfolio')).toBeInTheDocument();
+});
+it('refreshes extraction after CV replacement without losing unsaved profile edits', async () => {
+  request.mockImplementation((path, method) => Promise.resolve(method === 'post'
+    ? {cvName: 'new.pdf', extractedSkills: 'react', extractionSummary: 'Detected React'}
+    : {headline: 'Original', skills: 'Java'}));
+  renderWithProviders(<Profile me={{id: 1, name: 'Candidate'}} />);
+  fireEvent.change(await screen.findByLabelText('Headline'), {target: {value: 'Unsaved headline'}});
+  fireEvent.change(screen.getByLabelText('Upload PDF'), {target: {files: [new File(['%PDF-test'], 'new.pdf', {type: 'application/pdf'})]}});
+  expect(await screen.findByText('Detected React')).toBeInTheDocument();
+  expect(screen.getByLabelText('Headline')).toHaveValue('Unsaved headline');
+  expect(screen.getByLabelText('Skills (comma-separated)')).toHaveValue('Java');
+});
+it("lets candidates review extracted skills before saving them", async () => {
+  request.mockResolvedValue({skills: 'Java', extractedSkills: 'java, react', extractionSummary: 'Detected 2 skills'});
+  renderWithProviders(<Profile me={{id: 1, name: 'Candidate', email: 'candidate@test.test'}} />);
+  fireEvent.click(await screen.findByRole('button', {name: 'Add detected skills'}));
+  expect(screen.getByLabelText('Skills (comma-separated)')).toHaveValue('java, react');
+  expect(request).not.toHaveBeenCalledWith('/profile', 'put', expect.anything());
+  fireEvent.click(screen.getByRole('button', {name: 'Save profile'}));
+  await waitFor(() => expect(request).toHaveBeenCalledWith('/profile', 'put', expect.objectContaining({skills: 'java, react'})));
 });
 it("saves candidate skills and education to the profile API", async () => {
   request.mockResolvedValue({
