@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [{
+    "label": "Run Job Portal",
+    "type": "process",
+    "command": "powershell.exe",
+    "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/Start-JobPortal.ps1"],
+    "group": {"kind": "build", "isDefault": true},
+    "problemMatcher": []
+  }]
+}

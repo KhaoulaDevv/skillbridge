@@ -1,0 +1,94 @@
+############### Root ###############
+.idea
+.DS_Store
+**/.DS_Store
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+playwright-report/
+test-results/
+__pycache__/
+# Local academic documents and rendered previews
+/rapport/
+/presentation/
+secrets/
+my-app-logs/
+mysql-data/
+target/
+node_modules/
+dist/
+build/
+coverage/
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+tmp/
+temp/
+.tmp/
+.temp/
+.cache/
+doc/notes/dev-notes.txt
+doc/skills/
+
+# Keep sanitized templates in git, keep private exports out of git.
+doc/insomnia/*-private.yaml
+doc/insomnia/*-local.yaml
+doc/insomnia/insomnia-*.yaml
+!doc/insomnia/insomnia-template.yaml
+docs/insomnia/*-private.yaml
+docs/insomnia/*-local.yaml
+docs/insomnia/insomnia-*.yaml
+!docs/insomnia/insomnia-template.yaml
+
+
+############### Back End ###############
+
+job-portal-backend/HELP.md
+job-portal-backend/target/
+job-portal-backend/!.mvn/wrapper/maven-wrapper.jar
+job-portal-backend/!**/src/main/**/target/
+job-portal-backend/!**/src/test/**/target/
+
+### IntelliJ IDEA ###
+job-portal-backend/.idea
+job-portal-backend/*.iws
+job-portal-backend/*.iml
+job-portal-backend/*.ipr
+
+### Configuration file now uses environment variables
+# job-portal-backend/src/main/resources/application.yml
+
+
+############### Front End ###############
+
+# Logs
+job-portal-frontend/logs
+job-portal-frontend/*.log
+job-portal-frontend/npm-debug.log*
+job-portal-frontend/yarn-debug.log*
+job-portal-frontend/yarn-error.log*
+job-portal-frontend/pnpm-debug.log*
+job-portal-frontend/lerna-debug.log*
+
+job-portal-frontend/node_modules
+job-portal-frontend/dist
+job-portal-frontend/build
+job-portal-frontend/dist-ssr
+job-portal-frontend/*.local
+
+# Editor directories and files
+job-portal-frontend/.vscode/*
+job-portal-frontend/!.vscode/extensions.json
+job-portal-frontend/.idea
+job-portal-frontend/*.suo
+job-portal-frontend/*.ntvs*
+job-portal-frontend/*.njsproj
+job-portal-frontend/*.sln
+job-portal-frontend/*.sw?

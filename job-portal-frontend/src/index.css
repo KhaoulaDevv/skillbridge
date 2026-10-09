@@ -1,0 +1,76 @@
+:root {
+    --color-dark: #141413;
+    --color-light: #faf9f5;
+    --color-mid-gray: #b0aea5;
+    --color-light-gray: #e8e6dc;
+    --accent-orange: #d97757;
+    --accent-blue: #6a9bcc;
+    --accent-green: #788c5d;
+    --font-heading: "Poppins", Arial, sans-serif;
+    --font-body: "Inter", "Segoe UI", Arial, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    min-width: 320px;
+    color: var(--color-dark);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background:
+        radial-gradient(circle at 10% 10%, rgba(217, 119, 87, 0.09), transparent 45%),
+        radial-gradient(circle at 90% 0%, rgba(106, 155, 204, 0.12), transparent 38%),
+        linear-gradient(180deg, var(--color-light), var(--color-light-gray));
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.heading-text {
+    font-family: var(--font-heading);
+    color: var(--color-dark);
+    letter-spacing: 0.02em;
+}
+
+h1 {
+    font-size: clamp(2.05rem, 3.7vw, 2.9rem);
+    line-height: 1.12;
+}
+
+h2 {
+    font-size: clamp(1.6rem, 3vw, 2.15rem);
+}
+
+h3 {
+    font-size: clamp(1.45rem, 2.4vw, 1.8rem);
+}
+
+a {
+    color: var(--accent-blue);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--accent-orange);
+}
+
+.body-text {
+    font-family: var(--font-body);
+}
