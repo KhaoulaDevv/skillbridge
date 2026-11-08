@@ -15,25 +15,45 @@ const blank = {
 };
 export default function Jobs({ me, jobs, companies, applications, reload }) {
   const staff = me.role !== "ROLE_APPLICANT";
-  const [form, setForm] = useState(null),
+  const draftKey = staff && me.id != null ? `skillbridge:opportunity-draft:${me.id}` : null;
+  const [form, setForm] = useState(() => {
+    if (!draftKey) return null;
+    try {
+      return JSON.parse(sessionStorage.getItem(draftKey));
+    } catch {
+      return null;
+    }
+  }),
     [selected, setSelected] = useState(null),
     [filter, setFilter] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
-  const change = (name, value) => setForm({ ...form, [name]: value });
+  const updateDraft = (next) => {
+    setForm(next);
+    if (!draftKey) return;
+    try {
+      if (next) sessionStorage.setItem(draftKey, JSON.stringify(next));
+      else sessionStorage.removeItem(draftKey);
+    } catch {
+      // The form remains usable when browser storage is unavailable.
+    }
+  };
+  const change = (name, value) => updateDraft({ ...form, [name]: value });
   const save = async (e) => {
     e.preventDefault();
     setBusy(true);
     setError("");
     try {
-      await request(
+      const saved = await request(
         form.id ? `/jobs/${form.id}` : "/jobs",
         form.id ? "put" : "post",
         { ...form, companyId: form.companyId ? Number(form.companyId) : null },
       );
-      setForm(null);
-      setNotice("Opportunity saved.");
+      updateDraft(null);
+      setFilter("");
+      setSelected(saved.id);
+      setNotice(`Opportunity saved: ${saved.title}.`);
       await reload().catch(() =>
         setError(
           "Saved successfully, but the list could not refresh. Use Refresh data to reload it.",
@@ -70,11 +90,16 @@ export default function Jobs({ me, jobs, companies, applications, reload }) {
       setBusy(false);
     }
   };
-  const shown = jobs.filter((j) =>
-    `${j.title} ${j.company} ${j.location} ${j.requiredSkills}`
-      .toLowerCase()
-      .includes(filter.toLowerCase()),
-  );
+  const search = filter.trim().toLowerCase();
+  const shown = jobs
+    .filter((job) =>
+      [job.title, job.company, job.location, job.requiredSkills]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(search),
+    )
+    .sort((a, b) => b.id - a.id);
   return (
     <>
       <header className="gl-page-heading">
@@ -93,8 +118,9 @@ export default function Jobs({ me, jobs, companies, applications, reload }) {
             <button
               className="gl-button"
               onClick={() => {
-                setForm({ ...blank });
+                updateDraft({ ...blank });
                 setError("");
+                setNotice("");
               }}
             >
               + Post opportunity
@@ -116,7 +142,7 @@ export default function Jobs({ me, jobs, companies, applications, reload }) {
               <button
                 type="button"
                 className="gl-text-button"
-                onClick={() => setForm(null)}
+                onClick={() => updateDraft(null)}
               >
                 Close ×
               </button>
@@ -286,7 +312,7 @@ export default function Jobs({ me, jobs, companies, applications, reload }) {
                     <button
                       className="gl-button secondary"
                       onClick={() => {
-                        setForm({ ...blank, ...job });
+                        updateDraft({ ...blank, ...job });
                         window.scrollTo({ top: 0, behavior: "smooth" });
                       }}
                     >

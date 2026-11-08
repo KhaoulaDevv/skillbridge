@@ -4,6 +4,8 @@ import { request } from "./api";
 import Profile from "./Profile";
 import Feedback from "./Feedback";
 import Jobs from "./Jobs";
+import Workspace from "./Workspace";
+import { Route, Routes } from "react-router-dom";
 import { Match } from "./shared";
 import { Conversation, ApplicationDetail } from "./Applications";
 vi.mock("./api", async (importOriginal) => ({
@@ -12,6 +14,53 @@ vi.mock("./api", async (importOriginal) => ({
 }));
 beforeEach(() => {
   vi.resetAllMocks();
+});
+it("closes a recruiter workspace when another tab switches accounts", async () => {
+  localStorage.setItem("token", "recruiter-session");
+  try {
+    request.mockImplementation(path => Promise.resolve(path === "/me"
+      ? {id: 6, name: "Recruiter", role: "RECRUITER"}
+      : []));
+    renderWithProviders(<Routes>
+      <Route path="/recruiter-dashboard" element={<Workspace />} />
+      <Route path="/" element={<h1>Sign in again</h1>} />
+    </Routes>, {route: "/recruiter-dashboard"});
+    await screen.findByRole("heading", {name: "The talent pipeline."});
+    localStorage.setItem("token", "admin-session");
+    fireEvent(window, new StorageEvent("storage", {key: "token", storageArea: localStorage}));
+    expect(await screen.findByRole("heading", {name: "Sign in again"})).toBeInTheDocument();
+    expect(localStorage.getItem("token")).toBe("admin-session");
+  } finally {
+    localStorage.removeItem("token");
+  }
+});
+it("restores an interrupted opportunity draft and clears it after a successful save", async () => {
+  const props = {me: {id: 6, role: "ROLE_RECRUITER"}, companies: [], jobs: [], applications: [], reload: vi.fn().mockResolvedValue()};
+  const draftKey = "skillbridge:opportunity-draft:6";
+  try {
+    const first = renderWithProviders(<Jobs {...props} />);
+    fireEvent.click(screen.getByRole("button", {name: /post opportunity/i}));
+    fireEvent.change(screen.getByLabelText("Job title"), {target: {value: "Java intern"}});
+    fireEvent.change(screen.getByLabelText("Description"), {target: {value: "Build APIs"}});
+    first.unmount();
+    renderWithProviders(<Jobs {...props} />);
+    expect(screen.getByLabelText("Job title")).toHaveValue("Java intern");
+    request.mockResolvedValueOnce({id: 21, title: "Java intern"});
+    fireEvent.click(screen.getByRole("button", {name: /save opportunity/i}));
+    expect(await screen.findByText("Opportunity saved: Java intern.")).toBeInTheDocument();
+    expect(sessionStorage.getItem(draftKey)).toBeNull();
+  } finally {
+    sessionStorage.removeItem(draftKey);
+  }
+});
+it.each(["ROLE_ADMIN", "ROLE_APPLICANT"])("shows the newest opportunity first and finds it by company for %s", (role) => {
+  renderWithProviders(<Jobs me={{role}} companies={[]} applications={[]} reload={vi.fn()}
+    jobs={[{id: 1, title: "Existing role", company: "Demo", status: "OPEN"},
+      {id: 21, title: "Junior Java Backend Developer", company: "ALTEN", status: "OPEN"}]} />);
+  const titles = () => screen.getAllByRole("heading", {level: 2}).map(heading => heading.textContent);
+  expect(titles()[0]).toBe("Junior Java Backend Developer");
+  fireEvent.change(screen.getByRole("textbox", {name: /search opportunities/i}), {target: {value: " alten "}});
+  expect(titles()).toEqual(["Junior Java Backend Developer"]);
 });
 it('allows reapplying after withdrawal but blocks duplicate active applications', () => {
   renderWithProviders(<Jobs me={{role: 'ROLE_APPLICANT'}} companies={[]} reload={vi.fn()}

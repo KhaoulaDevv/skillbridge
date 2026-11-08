@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -23,16 +23,40 @@ export default function Workspace() {
   const dispatch = useDispatch(),
     navigate = useNavigate(),
     sessionTimeout = useSessionTimeout();
+  const workspaceToken = useRef(localStorage.getItem("token"));
   useEffect(() => {
+    const token = workspaceToken.current;
+    const sessionChanged = () => {
+      if (localStorage.getItem("token") === token) return false;
+      navigate("/", {
+        replace: true,
+        state: { sessionMessage: "Your account changed in another tab. Sign in again to continue." },
+      });
+      return true;
+    };
+    const onStorage = (event) => {
+      if (event.storageArea === localStorage && (event.key === "token" || event.key === null)) {
+        sessionChanged();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    const requestInterceptor = axios.interceptors.request.use((config) => {
+      if (sessionChanged()) throw new axios.CanceledError("Workspace session changed");
+      return config;
+    });
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       (error) => {
-        sessionTimeout(error);
+        if (!sessionChanged()) sessionTimeout(error);
         return Promise.reject(error);
       },
     );
-    return () => axios.interceptors.response.eject(interceptor);
-  }, [sessionTimeout]);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      axios.interceptors.request.eject(requestInterceptor);
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [navigate, sessionTimeout]);
   const reload = useCallback(async () => {
     const [j, c, a] = await Promise.all([
       request("/jobs"),
